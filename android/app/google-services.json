@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1004868151524",
+    "project_id": "property-171e0",
+    "storage_bucket": "property-171e0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1004868151524:android:2858c48e894bf70c9964f1",
+        "android_client_info": {
+          "package_name": "com.thehalalway.property"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAIAGg3IH9M1t3wDkvzgVuPmcRf7s3UGdk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

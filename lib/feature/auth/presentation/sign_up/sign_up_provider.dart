@@ -1,0 +1,110 @@
+import 'package:flutter/material.dart';
+import 'package:property/feature/auth/data/auth_exception.dart';
+import 'package:property/feature/auth/data/auth_repository.dart';
+
+/// UI state holder for [SignUpScreen]: form controllers, validation,
+/// loading state, and the calls into [AuthRepository].
+///
+/// Successful sign-up isn't handled here — [AuthGate] reacts to
+/// [AuthRepository.authStateChanges] and swaps to the home screen on its
+/// own, so this provider only needs to report success/failure back to the
+/// screen for UI feedback (e.g. an error toast).
+class SignUpProvider extends ChangeNotifier {
+  SignUpProvider(this._authRepository);
+
+  final AuthRepository _authRepository;
+
+  final formKey = GlobalKey<FormState>();
+  final nameController = TextEditingController();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+  final confirmPasswordController = TextEditingController();
+
+  bool _isLoading = false;
+  bool get isLoading => _isLoading;
+
+  bool _obscurePassword = true;
+  bool get obscurePassword => _obscurePassword;
+
+  bool _obscureConfirmPassword = true;
+  bool get obscureConfirmPassword => _obscureConfirmPassword;
+
+  void toggleObscurePassword() {
+    _obscurePassword = !_obscurePassword;
+    notifyListeners();
+  }
+
+  void toggleObscureConfirmPassword() {
+    _obscureConfirmPassword = !_obscureConfirmPassword;
+    notifyListeners();
+  }
+
+  String? validateName(String? value) {
+    if (value == null || value.trim().isEmpty) return 'Name is required';
+    return null;
+  }
+
+  String? validateEmail(String? value) {
+    if (value == null || value.trim().isEmpty) return 'Email is required';
+    final emailRegex = RegExp(r'^[\w.\-]+@([\w\-]+\.)+[\w\-]{2,4}$');
+    if (!emailRegex.hasMatch(value.trim())) return 'Enter a valid email';
+    return null;
+  }
+
+  String? validatePassword(String? value) {
+    if (value == null || value.isEmpty) return 'Password is required';
+    if (value.length < 6) return 'Password must be at least 6 characters';
+    return null;
+  }
+
+  String? validateConfirmPassword(String? value) {
+    if (value == null || value.isEmpty) return 'Please confirm your password';
+    if (value != passwordController.text) return 'Passwords do not match';
+    return null;
+  }
+
+  /// Returns an error message on failure, or null on success.
+  Future<String?> signUp() async {
+    if (!formKey.currentState!.validate()) return null;
+    _setLoading(true);
+    try {
+      await _authRepository.signUpWithEmail(
+        name: nameController.text,
+        email: emailController.text,
+        password: passwordController.text,
+      );
+      return null;
+    } on AuthException catch (e) {
+      return e.message;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Returns an error message on failure, or null on success/cancel.
+  Future<String?> signUpWithGoogle() async {
+    _setLoading(true);
+    try {
+      await _authRepository.signInWithGoogle();
+      return null;
+    } on AuthException catch (e) {
+      return e.message;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  void _setLoading(bool value) {
+    _isLoading = value;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    super.dispose();
+  }
+}

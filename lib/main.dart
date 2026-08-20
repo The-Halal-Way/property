@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:property/config/router/app_router.dart';
 import 'package:property/config/theme/app_theme.dart';
+import 'package:property/config/theme/theme_provider.dart';
 import 'package:property/core/navigation/app_navigator.dart';
 import 'package:property/feature/auth/data/auth_repository.dart';
 
@@ -34,18 +35,22 @@ class MyApp extends StatelessWidget {
       minTextAdapt: true,
       builder: (context, child) => MultiProvider(
         providers: [
-          // Single shared AuthRepository instance for the whole app; the
-          // router reads it to build screen-scoped providers on demand.
           Provider<AuthRepository>(create: (_) => AuthRepository()),
+          ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
         ],
-        child: MaterialApp(
-          title: 'Property',
-          debugShowCheckedModeBanner: false,
-          navigatorKey: appNavigatorKey,
-          theme: AppTheme.light(context),
-          darkTheme: AppTheme.dark(context),
-          initialRoute: AppRouteName.authGate,
-          onGenerateRoute: AppRouter.onGenerateRoute,
+        child: Consumer<ThemeProvider>(
+          builder: (context, themeProvider, _) => MaterialApp(
+            title: 'Property',
+            debugShowCheckedModeBanner: false,
+            navigatorKey: appNavigatorKey,
+            theme: AppTheme.light(context),
+            darkTheme: AppTheme.dark(context),
+            themeMode: themeProvider.themeMode,
+            themeAnimationDuration: const Duration(milliseconds: 280),
+            themeAnimationCurve: Curves.easeOutCubic,
+            initialRoute: AppRouteName.authGate,
+            onGenerateRoute: AppRouter.onGenerateRoute,
+          ),
         ),
       ),
     );

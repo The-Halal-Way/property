@@ -439,7 +439,7 @@ abstract class AppTheme {
           return MyColor.onPrimary;
         }),
         overlayColor: WidgetStateProperty.all(
-          MyColor.onPrimary.withOpacity(0.10),
+          MyColor.onPrimary.withValues(alpha: 0.10),
         ),
         shape: WidgetStateProperty.all(RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12.r * tm),
@@ -484,7 +484,7 @@ abstract class AppTheme {
             return BorderSide(color: MyColor.primary, width: 1.5.w * tm);
           }
           return BorderSide(
-            color: borderCol.withOpacity(0.5),
+            color: borderCol.withValues(alpha: 0.5),
             width: 1.0.w * tm,
           );
         }),
@@ -515,7 +515,7 @@ abstract class AppTheme {
       style: ButtonStyle(
         foregroundColor: WidgetStateProperty.all(MyColor.secondary),
         overlayColor: WidgetStateProperty.all(
-          MyColor.secondary.withOpacity(0.08),
+          MyColor.secondary.withValues(alpha: 0.08),
         ),
         textStyle: WidgetStateProperty.all(TextStyle(
           fontSize: getResponsiveTextSize(context, 14.sp, 13.sp, 16.sp) * ts,
@@ -556,7 +556,7 @@ abstract class AppTheme {
         borderRadius: BorderRadius.circular(20.r),
         side: BorderSide(
           color: isDark
-              ? MyColor.primary.withOpacity(0.3)
+              ? MyColor.primary.withValues(alpha: 0.3)
               : MyColor.outlineVariant,
           width: 0.5,
         ),

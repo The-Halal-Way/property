@@ -15,21 +15,21 @@ import 'package:property/feature/auth/data/auth_exception.dart';
 class AuthRepository {
   AuthRepository({FirebaseAuth? firebaseAuth, GoogleSignIn? googleSignIn})
     : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
-      _googleSignIn = googleSignIn ?? GoogleSignIn.instance {
-    // Keep the cached ID token fresh for every sign-in/sign-out, including
-    // the automatic sign-in Firebase performs on app start from its own
-    // on-device session persistence.
-    _firebaseAuth.authStateChanges().listen(_syncIdToken);
-  }
+      _googleSignIn = googleSignIn ?? GoogleSignIn.instance;
 
   final FirebaseAuth _firebaseAuth;
   final GoogleSignIn _googleSignIn;
   bool _googleSignInInitialized = false;
 
-  /// Emits whenever the signed-in user changes (including on app start,
-  /// restoring whatever session Firebase persisted on-device). Drives
-  /// [AuthGate] and gives "stay signed in until sign-out" for free.
-  Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
+  /// Emits only after the API token cache matches the current Firebase user.
+  /// Listening to token changes also refreshes the bearer token during a long
+  /// running session, before a feature makes its next API request.
+  Stream<User?> get authStateChanges async* {
+    await for (final user in _firebaseAuth.idTokenChanges()) {
+      await _syncIdToken(user);
+      yield user;
+    }
+  }
 
   User? get currentUser => _firebaseAuth.currentUser;
 
@@ -104,6 +104,9 @@ class AuthRepository {
   }
 
   Future<void> signOut() async {
-    await Future.wait([_firebaseAuth.signOut(), _googleSignIn.signOut()]);
+    await _firebaseAuth.signOut();
+    if (_googleSignInInitialized) {
+      await _googleSignIn.signOut();
+    }
   }
 }

@@ -1,44 +1,55 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:property/feature/auth/data/auth_repository.dart';
+import 'package:property/feature/dashboard/data/repository/dashboard_repository.dart';
+import 'package:property/feature/dashboard/presentation/provider/dashboard_provider.dart';
+import 'package:property/feature/dashboard/presentation/screen/dashboard_screen.dart';
+import 'package:property/feature/home/widget/home_navbar.dart';
+import 'package:property/feature/settings/presentation/provider/settings_provider.dart';
+import 'package:property/feature/settings/presentation/screen/settings_screen.dart';
 
-/// Placeholder landing screen shown by [AuthGate] once signed in.
-///
-/// This is just enough to prove the auth flow end-to-end and offer a
-/// sign-out entry point; the real home feature is built separately.
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.dashboardRepository});
+
+  final DashboardRepository? dashboardRepository;
 
   @override
   Widget build(BuildContext context) {
-    final authRepository = context.read<AuthRepository>();
-    final user = authRepository.currentUser;
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Home')),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              user?.displayName != null
-                  ? 'Welcome, ${user!.displayName}!'
-                  : 'Welcome!',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            SizedBox(height: 8.h),
-            Text(
-              user?.email ?? '',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            SizedBox(height: 24.h),
-            OutlinedButton(
-              onPressed: authRepository.signOut,
-              child: const Text('Sign out'),
-            ),
-          ],
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<DashboardProvider>(
+          create: (_) =>
+              DashboardProvider(dashboardRepository ?? DashboardRepository()),
         ),
+        ChangeNotifierProvider<SettingsProvider>(
+          create: (_) => SettingsProvider(context.read<AuthRepository>()),
+        ),
+      ],
+      child: const _HomeShell(),
+    );
+  }
+}
+
+class _HomeShell extends StatefulWidget {
+  const _HomeShell();
+
+  @override
+  State<_HomeShell> createState() => _HomeShellState();
+}
+
+class _HomeShellState extends State<_HomeShell> {
+  int _currentIndex = 0;
+
+  static const List<Widget> _pages = [DashboardScreen(), SettingsScreen()];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      resizeToAvoidBottomInset: false,
+      body: IndexedStack(index: _currentIndex, children: _pages),
+      bottomNavigationBar: HomeNavBar(
+        currentIndex: _currentIndex,
+        onTap: (index) => setState(() => _currentIndex = index),
       ),
     );
   }

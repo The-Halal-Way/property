@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:property/config/router/app_router.dart';
 import 'package:property/feature/properties/data/model/property_model.dart';
 import 'package:property/feature/properties/data/model/property_page_model.dart';
 import 'package:property/feature/properties/data/model/property_pagination_meta_model.dart';
@@ -30,6 +31,10 @@ void main() {
       expect(find.byKey(const ValueKey('property-add-button')), findsOneWidget);
       expect(find.text('Aurora Heights'), findsOneWidget);
       expect(find.text('BDT 25000000'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('property-add-button')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('add-property-page')), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -106,6 +111,7 @@ Widget _propertyApp(_FakePropertyRepository repository) {
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFA855F7)),
       ),
+      onGenerateRoute: AppRouter.onGenerateRoute,
       home: ChangeNotifierProvider(
         create: (_) => PropertyProvider(repository),
         child: const PropertiesScreen(),

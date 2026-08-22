@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
+import 'package:property/config/router/app_router.dart';
 import 'package:property/feature/tenant/data/datasource/tenant_remote_data_source.dart';
 import 'package:property/feature/tenant/data/repository/tenant_repository_impl.dart';
 import 'package:property/feature/tenant/presentation/provider/tenant_provider.dart';
@@ -96,7 +97,9 @@ class _TenantScreenState extends State<TenantScreen> {
                       child: _CenteredContent(
                         child: TenantHeader(
                           onBack: () => Navigator.of(context).maybePop(),
-                          onAdd: _showAddComingSoon,
+                          onAdd: () => Navigator.of(
+                            context,
+                          ).pushNamed(AppRouteName.addTenant),
                         ),
                       ),
                     ),
@@ -209,17 +212,6 @@ class _TenantScreenState extends State<TenantScreen> {
         ],
       ),
     );
-  }
-
-  void _showAddComingSoon() {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(
-          behavior: SnackBarBehavior.floating,
-          content: Text('Adding a tenant is coming next.'),
-        ),
-      );
   }
 }
 

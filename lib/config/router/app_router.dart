@@ -6,10 +6,13 @@ import 'package:property/feature/auth/presentation/sign_in/sign_in_provider.dart
 import 'package:property/feature/auth/presentation/sign_in/sign_in_screen.dart';
 import 'package:property/feature/auth/presentation/sign_up/sign_up_provider.dart';
 import 'package:property/feature/auth/presentation/sign_up/sign_up_screen.dart';
+import 'package:property/feature/employee/presentation/screen/add_employee_screen.dart';
 import 'package:property/feature/employee/presentation/screen/employee_screen.dart';
 import 'package:property/feature/invoice/presentation/screen/invoice_screen.dart';
+import 'package:property/feature/properties/presentation/screen/add_property_screen.dart';
 import 'package:property/feature/properties/presentation/screen/properties_screen.dart';
 import 'package:property/feature/report/presentation/screen/report_screen.dart';
+import 'package:property/feature/tenant/presentation/screen/add_tenant_screen.dart';
 import 'package:property/feature/tenant/presentation/screen/tenant_screen.dart';
 
 class AppRouteName {
@@ -20,8 +23,11 @@ class AppRouteName {
   static const String profileDetails = '/settings/profile-details';
   static const String home = '/home';
   static const String employees = '/employees';
+  static const String addEmployee = '/employees/add';
   static const String properties = '/properties';
+  static const String addProperty = '/properties/add';
   static const String tenants = '/tenants';
+  static const String addTenant = '/tenants/add';
   static const String invoices = '/invoices';
   static const String reports = '/reports';
   static const String club = '/home/club';
@@ -60,16 +66,34 @@ abstract class AppRouter {
           child: const TenantRoutePage(),
         );
 
+      case AppRouteName.addTenant:
+        return _materialRoute(
+          settings: settings,
+          child: const AddTenantScreen(),
+        );
+
       case AppRouteName.properties:
         return _materialRoute(
           settings: settings,
           child: const PropertiesRoutePage(),
         );
 
+      case AppRouteName.addProperty:
+        return _materialRoute(
+          settings: settings,
+          child: const AddPropertyScreen(),
+        );
+
       case AppRouteName.employees:
         return _materialRoute(
           settings: settings,
           child: const EmployeeRoutePage(),
+        );
+
+      case AppRouteName.addEmployee:
+        return _materialRoute(
+          settings: settings,
+          child: const AddEmployeeScreen(),
         );
 
       case AppRouteName.invoices:

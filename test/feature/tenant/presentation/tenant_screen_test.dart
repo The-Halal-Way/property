@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:property/config/router/app_router.dart';
 import 'package:property/feature/tenant/data/model/pagination_meta_model.dart';
 import 'package:property/feature/tenant/data/model/tenant_lease_model.dart';
 import 'package:property/feature/tenant/data/model/tenant_model.dart';
@@ -30,6 +31,10 @@ void main() {
       expect(find.byKey(const ValueKey('tenant-add-button')), findsOneWidget);
       expect(find.text('Ayesha Rahman'), findsOneWidget);
       expect(find.text('+8801700000000'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('tenant-add-button')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('add-tenant-page')), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -103,6 +108,7 @@ Widget _tenantApp(_FakeTenantRepository repository) {
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFA855F7)),
       ),
+      onGenerateRoute: AppRouter.onGenerateRoute,
       home: ChangeNotifierProvider(
         create: (_) => TenantProvider(repository),
         child: const TenantScreen(),

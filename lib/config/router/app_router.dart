@@ -6,6 +6,11 @@ import 'package:property/feature/auth/presentation/sign_in/sign_in_provider.dart
 import 'package:property/feature/auth/presentation/sign_in/sign_in_screen.dart';
 import 'package:property/feature/auth/presentation/sign_up/sign_up_provider.dart';
 import 'package:property/feature/auth/presentation/sign_up/sign_up_screen.dart';
+import 'package:property/feature/employee/presentation/screen/employee_screen.dart';
+import 'package:property/feature/invoice/presentation/screen/invoice_screen.dart';
+import 'package:property/feature/properties/presentation/screen/properties_screen.dart';
+import 'package:property/feature/report/presentation/screen/report_screen.dart';
+import 'package:property/feature/tenant/presentation/screen/tenant_screen.dart';
 
 class AppRouteName {
   static const String authGate = '/';
@@ -14,6 +19,11 @@ class AppRouteName {
   static const String settings = '/settings';
   static const String profileDetails = '/settings/profile-details';
   static const String home = '/home';
+  static const String employees = '/employees';
+  static const String properties = '/properties';
+  static const String tenants = '/tenants';
+  static const String invoices = '/invoices';
+  static const String reports = '/reports';
   static const String club = '/home/club';
   static const String locker = '/home/locker';
   static const String kurbani = '/home/kurbani';
@@ -42,6 +52,36 @@ abstract class AppRouter {
             create: (context) => SignUpProvider(context.read<AuthRepository>()),
             child: const SignUpScreen(),
           ),
+        );
+
+      case AppRouteName.tenants:
+        return _materialRoute(
+          settings: settings,
+          child: const TenantRoutePage(),
+        );
+
+      case AppRouteName.properties:
+        return _materialRoute(
+          settings: settings,
+          child: const PropertiesRoutePage(),
+        );
+
+      case AppRouteName.employees:
+        return _materialRoute(
+          settings: settings,
+          child: const EmployeeRoutePage(),
+        );
+
+      case AppRouteName.invoices:
+        return _materialRoute(
+          settings: settings,
+          child: const InvoiceRoutePage(),
+        );
+
+      case AppRouteName.reports:
+        return _materialRoute(
+          settings: settings,
+          child: const ReportRoutePage(),
         );
 
       case AppRouteName.authGate:

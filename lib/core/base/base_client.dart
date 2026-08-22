@@ -49,8 +49,7 @@ class BaseClient {
     required BuildContext ctx,
   }) async {
     try {
-      final url = "${MyApiUrl.baseUrl}/$endPoint";
-      //final url = "${MyApiUrl.baseUrl}/${MyApiUrl.version}/$endPoint";
+      final url = "${MyApiUrl.baseUrl}/${MyApiUrl.version}/$endPoint";
       _logger.i("$url/$parameters");
       final response = await dio.get(
         url,
@@ -85,8 +84,7 @@ class BaseClient {
     bool showError = true,
   }) async {
     try {
-      final url = "${MyApiUrl.baseUrl}/$endPoint";
-      //final url = "${MyApiUrl.baseUrl}/${MyApiUrl.version}/$endPoint";
+      final url = "${MyApiUrl.baseUrl}/${MyApiUrl.version}/$endPoint";
       _logger.i("$url/$parameters");
       final response = await dio.post(
         url,
@@ -130,8 +128,7 @@ class BaseClient {
     bool showError = true,
   }) async {
     try {
-      final url = "${MyApiUrl.baseUrl}/$endPoint";
-      //final url = "${MyApiUrl.baseUrl}/${MyApiUrl.version}/$endPoint";
+      final url = "${MyApiUrl.baseUrl}/${MyApiUrl.version}/$endPoint";
       _logger.i("$url/$parameters");
 
       final formData = FormData.fromMap({
@@ -192,8 +189,7 @@ class BaseClient {
     required BuildContext ctx,
   }) async {
     try {
-      final url = "${MyApiUrl.baseUrl}/$endPoint";
-      //final url = "${MyApiUrl.baseUrl}/${MyApiUrl.version}/$endPoint";
+      final url = "${MyApiUrl.baseUrl}/${MyApiUrl.version}/$endPoint";
       _logger.i("$url/$parameters");
       final response = await dio.patch(
         url,
@@ -225,8 +221,7 @@ class BaseClient {
     required BuildContext ctx,
   }) async {
     try {
-      final url = "${MyApiUrl.baseUrl}/$endPoint";
-      //final url = "${MyApiUrl.baseUrl}/${MyApiUrl.version}/$endPoint";
+      final url = "${MyApiUrl.baseUrl}/${MyApiUrl.version}/$endPoint";
       _logger.i("$url/$parameters");
       final response = await dio.put(
         url,
@@ -258,8 +253,7 @@ class BaseClient {
     required BuildContext ctx,
   }) async {
     try {
-      final url = "${MyApiUrl.baseUrl}/$endPoint";
-      //final url = "${MyApiUrl.baseUrl}/${MyApiUrl.version}/$endPoint";
+      final url = "${MyApiUrl.baseUrl}/${MyApiUrl.version}/$endPoint";
       _logger.i("$url/$parameters");
       final response = await dio.delete(
         url,

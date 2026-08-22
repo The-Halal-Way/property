@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:property/config/router/app_router.dart';
 import 'package:property/feature/auth/data/auth_repository.dart';
 import 'package:property/feature/dashboard/data/repository/dashboard_repository.dart';
 import 'package:property/feature/dashboard/presentation/provider/dashboard_provider.dart';
@@ -40,7 +41,16 @@ class _HomeShell extends StatefulWidget {
 class _HomeShellState extends State<_HomeShell> {
   int _currentIndex = 0;
 
-  static const List<Widget> _pages = [DashboardScreen(), SettingsScreen()];
+  late final List<Widget> _pages;
+
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      DashboardScreen(onQuickActionSelected: _handleQuickAction),
+      const SettingsScreen(),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,5 +62,41 @@ class _HomeShellState extends State<_HomeShell> {
         onTap: (index) => setState(() => _currentIndex = index),
       ),
     );
+  }
+
+  void _handleQuickAction(String label) {
+    if (label == 'Properties') {
+      Navigator.of(context).pushNamed(AppRouteName.properties);
+      return;
+    }
+
+    if (label == 'Tenants') {
+      Navigator.of(context).pushNamed(AppRouteName.tenants);
+      return;
+    }
+
+    if (label == 'Employees') {
+      Navigator.of(context).pushNamed(AppRouteName.employees);
+      return;
+    }
+
+    if (label == 'Invoices') {
+      Navigator.of(context).pushNamed(AppRouteName.invoices);
+      return;
+    }
+
+    if (label == 'Reports') {
+      Navigator.of(context).pushNamed(AppRouteName.reports);
+      return;
+    }
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text('$label workspace is not available yet.'),
+        ),
+      );
   }
 }

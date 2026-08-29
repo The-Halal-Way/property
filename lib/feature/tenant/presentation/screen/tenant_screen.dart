@@ -97,9 +97,14 @@ class _TenantScreenState extends State<TenantScreen> {
                       child: _CenteredContent(
                         child: TenantHeader(
                           onBack: () => Navigator.of(context).maybePop(),
-                          onAdd: () => Navigator.of(
-                            context,
-                          ).pushNamed(AppRouteName.addTenant),
+                          onAdd: () async {
+                            final created = await Navigator.of(
+                              context,
+                            ).pushNamed(AppRouteName.addTenant);
+                            if (created != null && context.mounted) {
+                              await provider.refresh();
+                            }
+                          },
                         ),
                       ),
                     ),

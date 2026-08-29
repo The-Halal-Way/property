@@ -9,7 +9,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('Add entity screens', () {
-    testWidgets('property form renders dynamic fields and an inert submit', (
+    testWidgets('property form renders dynamic fields and submit control', (
       tester,
     ) async {
       await _setSize(tester, const Size(375, 812));

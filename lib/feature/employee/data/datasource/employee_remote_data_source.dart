@@ -1,11 +1,16 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:property/core/base/base_client.dart';
 import 'package:property/core/constants/my_api_url.dart';
+import 'package:property/feature/employee/data/model/create_employee_request.dart';
 import 'package:property/feature/employee/data/model/employee_json_parser.dart';
+import 'package:property/feature/employee/data/model/employee_model.dart';
 import 'package:property/feature/employee/data/model/employee_page_model.dart';
 
 abstract interface class EmployeeRemoteDataSource {
   Future<EmployeePageModel> fetchEmployees();
+
+  Future<EmployeeModel> createEmployee(CreateEmployeeRequest request);
 }
 
 class BaseClientEmployeeRemoteDataSource implements EmployeeRemoteDataSource {
@@ -19,7 +24,6 @@ class BaseClientEmployeeRemoteDataSource implements EmployeeRemoteDataSource {
       endPoint: MyApiUrl.employees,
       ctx: _context,
     );
-
     return EmployeePageModel.fromJson(employeeJsonMap({
   "success": true,
   "message": "OK",
@@ -92,5 +96,30 @@ class BaseClientEmployeeRemoteDataSource implements EmployeeRemoteDataSource {
       throw const FormatException('The employees response is invalid.');
     }
     return EmployeePageModel.fromJson(employeeJsonMap(response));
+  }
+
+  @override
+  Future<EmployeeModel> createEmployee(CreateEmployeeRequest request) async {
+    final photo = request.photo;
+    final response = await BaseClient.postMultipartData(
+      endPoint: MyApiUrl.employees,
+      fields: request.toFields(),
+      files: photo == null
+          ? null
+          : {
+              'photo': MultipartFile.fromBytes(
+                photo.bytes,
+                filename: photo.name,
+              ),
+            },
+      ctx: _context,
+    );
+
+    final responseMap = employeeJsonMap(response);
+    final data = employeeJsonMap(responseMap['data']);
+    if (response is! Map || responseMap['success'] != true || data.isEmpty) {
+      throw const FormatException('The created employee response is invalid.');
+    }
+    return EmployeeModel.fromJson(data);
   }
 }

@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:property/core/base/base_client.dart';
+import 'package:property/core/model/selected_upload_file.dart';
+import 'package:property/core/util/my_dialog.dart';
 import 'package:property/core/widgets/entity_form.dart';
+import 'package:property/feature/employee/data/datasource/employee_remote_data_source.dart';
+import 'package:property/feature/employee/data/model/create_employee_request.dart';
+import 'package:property/feature/employee/data/repository/employee_repository.dart';
+import 'package:property/feature/employee/data/repository/employee_repository_impl.dart';
 
 class AddEmployeeScreen extends StatefulWidget {
-  const AddEmployeeScreen({super.key});
+  const AddEmployeeScreen({super.key, this.repository});
+
+  final EmployeeCreateRepository? repository;
 
   @override
   State<AddEmployeeScreen> createState() => _AddEmployeeScreenState();
@@ -18,12 +27,15 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
       icon: Icons.person_rounded,
       keyboardType: TextInputType.name,
       textCapitalization: TextCapitalization.words,
+      isRequired: true,
+      maxLength: 255,
     ),
     DynamicTextFieldDefinition(
       id: 'designation',
       label: 'Designation (optional)',
       hint: 'Property manager, accountant…',
       icon: Icons.work_rounded,
+      maxLength: 100,
     ),
     DynamicTextFieldDefinition(
       id: 'phone',
@@ -32,24 +44,20 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
       icon: Icons.phone_rounded,
       keyboardType: TextInputType.phone,
       textCapitalization: TextCapitalization.none,
-    ),
-    DynamicTextFieldDefinition(
-      id: 'photo-url',
-      label: 'Photo URL (optional)',
-      hint: 'https://…',
-      icon: Icons.add_photo_alternate_rounded,
-      keyboardType: TextInputType.url,
-      textCapitalization: TextCapitalization.none,
+      maxLength: 30,
     ),
   ];
 
   static const _roleFields = <DynamicTextFieldDefinition>[
     DynamicTextFieldDefinition(
-      id: 'role',
-      label: 'Role (optional)',
-      hint: 'Manager, auditor, caretaker…',
+      id: 'role-ids',
+      label: 'Role IDs (optional)',
+      hint: 'e.g. 1, 3',
       icon: Icons.admin_panel_settings_rounded,
       fullWidth: true,
+      keyboardType: TextInputType.number,
+      textCapitalization: TextCapitalization.none,
+      validator: _validateRoleIds,
     ),
   ];
 
@@ -61,6 +69,9 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
       icon: Icons.alternate_email_rounded,
       keyboardType: TextInputType.emailAddress,
       textCapitalization: TextCapitalization.none,
+      isRequired: true,
+      maxLength: 255,
+      validator: _validateEmail,
     ),
     DynamicTextFieldDefinition(
       id: 'password',
@@ -69,6 +80,7 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
       icon: Icons.password_rounded,
       textCapitalization: TextCapitalization.none,
       obscureText: true,
+      isRequired: true,
     ),
   ];
 
@@ -81,6 +93,7 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
       fullWidth: true,
       minLines: 3,
       maxLines: 5,
+      maxLength: 5000,
     ),
   ];
 
@@ -104,8 +117,11 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
   ];
 
   late final Map<String, TextEditingController> _controllers;
+  final _formKey = GlobalKey<FormState>();
   final Set<String> _selectedPermissions = {};
+  SelectedUploadFile? _photo;
   bool _loginEnabled = false;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -129,7 +145,59 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
     super.dispose();
   }
 
-  void _submit() {}
+  String _value(String id) => _controllers[id]!.text.trim();
+
+  Future<void> _submit() async {
+    if (_isSubmitting || !(_formKey.currentState?.validate() ?? false)) return;
+
+    FocusScope.of(context).unfocus();
+    setState(() => _isSubmitting = true);
+
+    final roleIds = _value('role-ids')
+        .split(RegExp(r'[,\s]+'))
+        .where((value) => value.isNotEmpty)
+        .map(int.parse)
+        .toList(growable: false);
+    final request = CreateEmployeeRequest(
+      name: _value('employee-name'),
+      email: _loginEnabled ? _value('email') : null,
+      password: _loginEnabled ? _controllers['password']!.text : null,
+      loginEnabled: _loginEnabled,
+      phone: _value('phone'),
+      designation: _value('designation'),
+      notes: _value('notes'),
+      photo: _photo,
+      roles: roleIds,
+      permissions: _selectedPermissions.toList(growable: false),
+    );
+
+    try {
+      final repository =
+          widget.repository ??
+          EmployeeRepositoryImpl(BaseClientEmployeeRemoteDataSource(context));
+      final employee = await repository.createEmployee(request);
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      MyDialog().showSuccessToast(msg: 'Employee added.', context: context);
+      Navigator.of(context).pop(employee);
+    } on ApiRequestException catch (error) {
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      if (!error.reported) {
+        MyDialog().showFailedToast(
+          msg: 'The employee could not be added. Please try again.',
+          context: context,
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      MyDialog().showFailedToast(
+        msg: 'The employee could not be added. Please try again.',
+        context: context,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -142,14 +210,29 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
       icon: Icons.person_add_rounded,
       submitLabel: 'Add employee',
       onSubmit: _submit,
+      formKey: _formKey,
+      isSubmitting: _isSubmitting,
       children: [
         EntityFormSection(
           title: 'Employee profile',
           subtitle: 'The details shown across your team directory',
           icon: Icons.badge_rounded,
-          child: DynamicTextFieldGrid(
-            fields: _profileFields,
-            controllers: _controllers,
+          child: Column(
+            children: [
+              DynamicTextFieldGrid(
+                fields: _profileFields,
+                controllers: _controllers,
+              ),
+              SizedBox(height: 13.h),
+              EntityFilePickerField(
+                id: 'employee-photo',
+                label: 'Photo (optional)',
+                icon: Icons.add_photo_alternate_rounded,
+                imagesOnly: true,
+                selectedFile: _photo,
+                onChanged: (file) => setState(() => _photo = file),
+              ),
+            ],
           ),
         ),
         EntityFormSection(
@@ -213,6 +296,22 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
       ],
     );
   }
+}
+
+String? _validateEmail(String? value) {
+  final email = value?.trim() ?? '';
+  if (email.isEmpty) return null;
+  final isValid = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email);
+  return isValid ? null : 'Enter a valid email address.';
+}
+
+String? _validateRoleIds(String? value) {
+  final raw = value?.trim() ?? '';
+  if (raw.isEmpty) return null;
+  final parts = raw.split(RegExp(r'[,\s]+')).where((part) => part.isNotEmpty);
+  return parts.every((part) => int.tryParse(part) != null)
+      ? null
+      : 'Enter role IDs separated by commas.';
 }
 
 class _LoginAccessSwitch extends StatelessWidget {

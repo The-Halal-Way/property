@@ -1,11 +1,16 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:property/core/base/base_client.dart';
 import 'package:property/core/constants/my_api_url.dart';
+import 'package:property/feature/tenant/data/model/create_tenant_request.dart';
 import 'package:property/feature/tenant/data/model/json_value_parser.dart';
+import 'package:property/feature/tenant/data/model/tenant_model.dart';
 import 'package:property/feature/tenant/data/model/tenant_page_model.dart';
 
 abstract interface class TenantRemoteDataSource {
   Future<TenantPageModel> fetchTenants();
+
+  Future<TenantModel> createTenant(CreateTenantRequest request);
 }
 
 class BaseClientTenantRemoteDataSource implements TenantRemoteDataSource {
@@ -19,7 +24,6 @@ class BaseClientTenantRemoteDataSource implements TenantRemoteDataSource {
       endPoint: MyApiUrl.tenants,
       ctx: _context,
     );
-    
      return TenantPageModel.fromJson(jsonMap(  {
   "success": true,
   "message": "OK",
@@ -175,9 +179,37 @@ class BaseClientTenantRemoteDataSource implements TenantRemoteDataSource {
     "last_page": 1
   }
 } ));
+
     if (response is! Map) {
       throw const FormatException('The tenants response is invalid.');
     }
     return TenantPageModel.fromJson(jsonMap(response));
+  }
+
+  @override
+  Future<TenantModel> createTenant(CreateTenantRequest request) async {
+    final photo = request.photo;
+    final idDocument = request.idDocument;
+    final response = await BaseClient.postMultipartData(
+      endPoint: MyApiUrl.tenants,
+      fields: request.toFields(),
+      files: {
+        if (photo != null)
+          'photo': MultipartFile.fromBytes(photo.bytes, filename: photo.name),
+        if (idDocument != null)
+          'id_document': MultipartFile.fromBytes(
+            idDocument.bytes,
+            filename: idDocument.name,
+          ),
+      },
+      ctx: _context,
+    );
+
+    final responseMap = jsonMap(response);
+    final data = jsonMap(responseMap['data']);
+    if (response is! Map || responseMap['success'] != true || data.isEmpty) {
+      throw const FormatException('The created tenant response is invalid.');
+    }
+    return TenantModel.fromJson(data);
   }
 }

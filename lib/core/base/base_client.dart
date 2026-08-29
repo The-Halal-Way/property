@@ -127,17 +127,36 @@ class BaseClient {
     required BuildContext ctx,
     bool showError = true,
   }) async {
-    try {
-      final url = "${MyApiUrl.baseUrl}/${MyApiUrl.version}/$endPoint";
-      _logger.i("$url/$parameters");
-
-      final formData = FormData.fromMap({
-        ...?fields,
+    return postMultipartData(
+      endPoint: endPoint,
+      fields: fields,
+      files: {
         fileField: await MultipartFile.fromFile(
           filePath,
           filename: filePath.split('/').last,
         ),
-      });
+      },
+      parameters: parameters,
+      options: options,
+      ctx: ctx,
+      showError: showError,
+    );
+  }
+
+  static Future<dynamic> postMultipartData({
+    required String endPoint,
+    Map<String, dynamic>? fields,
+    Map<String, MultipartFile>? files,
+    Map<String, dynamic>? parameters,
+    Options? options,
+    required BuildContext ctx,
+    bool showError = true,
+  }) async {
+    try {
+      final url = "${MyApiUrl.baseUrl}/${MyApiUrl.version}/$endPoint";
+      _logger.i("$url/$parameters");
+
+      final formData = FormData.fromMap({...?fields, ...?files});
 
       final resolvedHeaders = <String, dynamic>{
         ...((options?.headers) ?? header),
@@ -164,12 +183,15 @@ class BaseClient {
       if (showError) {
         MyDialog().showFailedToast(msg: MyString.errorMsg, context: ctx);
       }
+      throw ApiRequestException(reported: showError);
     } on DioException catch (e) {
       _logDioError('POST-MULTIPART', e);
       if (showError) {
         ApiException.handleException(e, ctx);
       }
+      throw ApiRequestException(reported: showError);
     } catch (e) {
+      if (e is ApiRequestException) rethrow;
       _logger.e(e);
       if (showError) {
         MyDialog().showFailedToast(
@@ -178,6 +200,7 @@ class BaseClient {
           context: ctx,
         );
       }
+      throw ApiRequestException(reported: showError);
     }
   }
 
@@ -219,6 +242,7 @@ class BaseClient {
     Map<String, dynamic>? parameters,
     Options? options,
     required BuildContext ctx,
+    bool showError = true,
   }) async {
     try {
       final url = "${MyApiUrl.baseUrl}/${MyApiUrl.version}/$endPoint";
@@ -230,18 +254,27 @@ class BaseClient {
         options: options ?? Options(headers: header),
       );
       _logResponse('PUT', response);
-      if (response.statusCode == 200) return response.data;
-      MyDialog().showFailedToast(msg: MyString.errorMsg, context: ctx);
+      final statusCode = response.statusCode ?? 0;
+      if (statusCode >= 200 && statusCode < 300) return response.data;
+      if (showError) {
+        MyDialog().showFailedToast(msg: MyString.errorMsg, context: ctx);
+      }
+      throw ApiRequestException(reported: showError);
     } on DioException catch (e) {
       _logDioError('PUT', e);
-      ApiException.handleException(e, ctx);
+      if (showError) ApiException.handleException(e, ctx);
+      throw ApiRequestException(reported: showError);
     } catch (e) {
+      if (e is ApiRequestException) rethrow;
       _logger.e(e);
-      MyDialog().showFailedToast(
-        title: "Unexpected Error!",
-        msg: e.toString(),
-        context: ctx,
-      );
+      if (showError) {
+        MyDialog().showFailedToast(
+          title: "Unexpected Error!",
+          msg: e.toString(),
+          context: ctx,
+        );
+      }
+      throw ApiRequestException(reported: showError);
     }
   }
 
@@ -276,4 +309,10 @@ class BaseClient {
       );
     }
   }
+}
+
+class ApiRequestException implements Exception {
+  const ApiRequestException({required this.reported});
+
+  final bool reported;
 }

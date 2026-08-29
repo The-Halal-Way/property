@@ -97,9 +97,14 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
                       child: _CenteredPropertyContent(
                         child: PropertyHeader(
                           onBack: () => Navigator.of(context).maybePop(),
-                          onAdd: () => Navigator.of(
-                            context,
-                          ).pushNamed(AppRouteName.addProperty),
+                          onAdd: () async {
+                            final created = await Navigator.of(
+                              context,
+                            ).pushNamed(AppRouteName.addProperty);
+                            if (created != null && context.mounted) {
+                              await provider.refresh();
+                            }
+                          },
                         ),
                       ),
                     ),

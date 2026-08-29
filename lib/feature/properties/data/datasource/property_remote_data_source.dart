@@ -1,11 +1,16 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:property/core/base/base_client.dart';
 import 'package:property/core/constants/my_api_url.dart';
+import 'package:property/feature/properties/data/model/create_property_request.dart';
 import 'package:property/feature/properties/data/model/property_json_parser.dart';
+import 'package:property/feature/properties/data/model/property_model.dart';
 import 'package:property/feature/properties/data/model/property_page_model.dart';
 
 abstract interface class PropertyRemoteDataSource {
   Future<PropertyPageModel> fetchProperties();
+
+  Future<PropertyModel> createProperty(CreatePropertyRequest request);
 }
 
 class BaseClientPropertyRemoteDataSource implements PropertyRemoteDataSource {
@@ -19,7 +24,6 @@ class BaseClientPropertyRemoteDataSource implements PropertyRemoteDataSource {
       endPoint: MyApiUrl.properties,
       ctx: _context,
     );
-
     return PropertyPageModel.fromJson(
       propertyJsonMap({
         "success": true,
@@ -227,5 +231,30 @@ class BaseClientPropertyRemoteDataSource implements PropertyRemoteDataSource {
       throw const FormatException('The properties response is invalid.');
     }
     return PropertyPageModel.fromJson(propertyJsonMap(response));
+  }
+
+  @override
+  Future<PropertyModel> createProperty(CreatePropertyRequest request) async {
+    final image = request.image;
+    final response = await BaseClient.postMultipartData(
+      endPoint: MyApiUrl.properties,
+      fields: request.toFields(),
+      files: image == null
+          ? null
+          : {
+              'image': MultipartFile.fromBytes(
+                image.bytes,
+                filename: image.name,
+              ),
+            },
+      ctx: _context,
+    );
+
+    final responseMap = propertyJsonMap(response);
+    final data = propertyJsonMap(responseMap['data']);
+    if (response is! Map || responseMap['success'] != true || data.isEmpty) {
+      throw const FormatException('The created property response is invalid.');
+    }
+    return PropertyModel.fromJson(data);
   }
 }

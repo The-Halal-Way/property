@@ -22,6 +22,9 @@ class MyApiUrl {
   //invoice
   static const String invoices = "invoices";
 
+  //profile
+  static const String profile = "profile";
+
   // admin proposal
   static const String adminProposals = "proposals";
   static const String adminProposalsSummary = "proposals/summary";

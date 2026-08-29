@@ -1,40 +1,63 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:property/config/theme/theme_provider.dart';
-import 'package:property/feature/auth/data/auth_repository.dart';
-import 'package:property/feature/settings/presentation/provider/settings_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:property/config/router/app_router.dart';
+import 'package:property/config/theme/theme_provider.dart';
+import 'package:property/core/util/my_dialog.dart';
+import 'package:property/feature/auth/data/auth_repository.dart';
+import 'package:property/feature/settings/data/model/profile_model.dart';
+import 'package:property/feature/settings/presentation/provider/settings_provider.dart';
 
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
+  const SettingsScreen({
+    super.key,
+    this.initialName,
+    this.initialEmail,
+    this.initialAvatarUrl,
+  });
+
+  final String? initialName;
+  final String? initialEmail;
+  final String? initialAvatarUrl;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final user = context.read<AuthRepository>().currentUser;
-    final email = user?.email?.trim() ?? '';
-    final displayName = user?.displayName?.trim();
-    final name = displayName != null && displayName.isNotEmpty
-        ? displayName
+    final provider = context.watch<SettingsProvider>();
+    final profile = provider.profile;
+    final needsAuthUser =
+        initialName == null || initialEmail == null || initialAvatarUrl == null;
+    final user = needsAuthUser
+        ? context.read<AuthRepository>().currentUser
+        : null;
+    final email = profile?.email.trim().isNotEmpty == true
+        ? profile!.email
+        : initialEmail ?? user?.email?.trim() ?? '';
+    final authName = initialName ?? user?.displayName?.trim() ?? '';
+    final name = profile?.name.trim().isNotEmpty == true
+        ? profile!.name
+        : authName.isNotEmpty
+        ? authName
         : _nameFromEmail(email);
+    final avatarUrl = profile?.avatarUrl.trim().isNotEmpty == true
+        ? profile!.avatarUrl
+        : initialAvatarUrl ?? user?.photoURL ?? '';
 
     return ColoredBox(
+      key: const ValueKey('settings-page'),
       color: colors.surface,
       child: Stack(
         children: [
-          _AmbientBackground(
-            primary: colors.primary,
-            secondary: colors.secondary,
-            tertiary: colors.tertiary,
-          ),
+          const _SettingsAmbientBackground(),
           SafeArea(
             bottom: false,
             child: CustomScrollView(
+              key: const ValueKey('settings-scroll-view'),
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               slivers: [
                 SliverPadding(
-                  padding: EdgeInsets.fromLTRB(18.w, 16.h, 18.w, 34.h),
+                  padding: EdgeInsets.fromLTRB(17.w, 13.h, 17.w, 28.h),
                   sliver: SliverToBoxAdapter(
                     child: Center(
                       child: ConstrainedBox(
@@ -42,37 +65,164 @@ class SettingsScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            const _ScreenTitle(),
-                            SizedBox(height: 22.h),
-                            _AccountHero(name: name, email: email),
-                            SizedBox(height: 28.h),
-                            const _SectionLead(
-                              eyebrow: 'ATMOSPHERE',
-                              title: 'Choose your mood',
-                              description:
-                                  'Tune the space around your work, not just the brightness.',
-                            ),
+                            const _CompactSettingsHeader(),
                             SizedBox(height: 13.h),
-                            const _AppearanceStudio(),
-                            SizedBox(height: 30.h),
-                            const _SectionLead(
-                              eyebrow: 'SESSION',
-                              title: 'Leave on your terms',
-                              description:
-                                  'End this session securely whenever you need a reset.',
+                            _CompactAccountHero(
+                              name: name,
+                              email: email,
+                              avatarUrl: avatarUrl,
                             ),
-                            SizedBox(height: 13.h),
-                            const _SignOutAction(),
-                            SizedBox(height: 28.h),
+                            SizedBox(height: 19.h),
+                            const _SettingsSectionLabel(
+                              eyebrow: 'ACCOUNT',
+                              title: 'Your account',
+                            ),
+                            SizedBox(height: 8.h),
+                            _SettingsGroup(
+                              children: [
+                                _SettingsTile(
+                                  key: const ValueKey(
+                                    'settings-profile-option',
+                                  ),
+                                  icon: Icons.person_outline_rounded,
+                                  title: 'Profile',
+                                  subtitle: 'Contact and regional details',
+                                  onTap: () => _openAccountSection(
+                                    context,
+                                    AppRouteName.profileDetails,
+                                    provider,
+                                  ),
+                                ),
+                                _SettingsTile(
+                                  key: const ValueKey(
+                                    'settings-preferences-option',
+                                  ),
+                                  icon: Icons.tune_rounded,
+                                  title: 'Preferences',
+                                  subtitle: 'Currency and display choices',
+                                  onTap: () => _openAccountSection(
+                                    context,
+                                    AppRouteName.preferences,
+                                    provider,
+                                  ),
+                                ),
+                                _SettingsTile(
+                                  key: const ValueKey(
+                                    'settings-password-option',
+                                  ),
+                                  icon: Icons.password_rounded,
+                                  title: 'Password',
+                                  subtitle: 'Prepare a secure password change',
+                                  onTap: () => _openAccountSection(
+                                    context,
+                                    AppRouteName.password,
+                                    provider,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 19.h),
+                            const _SettingsSectionLabel(
+                              eyebrow: 'APPEARANCE',
+                              title: 'Theme',
+                            ),
+                            SizedBox(height: 8.h),
+                            const _CompactThemePicker(),
+                            SizedBox(height: 19.h),
+                            const _SettingsSectionLabel(
+                              eyebrow: 'SERVICES & SUPPORT',
+                              title: 'Help and legal',
+                            ),
+                            SizedBox(height: 8.h),
+                            _SettingsGroup(
+                              children: [
+                                _SettingsTile(
+                                  key: const ValueKey('settings-help-option'),
+                                  icon: Icons.help_outline_rounded,
+                                  title: 'Help center',
+                                  subtitle: 'Guides and common questions',
+                                  onTap: () =>
+                                      _showPendingPage(context, 'Help center'),
+                                ),
+                                _SettingsTile(
+                                  key: const ValueKey(
+                                    'settings-privacy-option',
+                                  ),
+                                  icon: Icons.privacy_tip_outlined,
+                                  title: 'Privacy policy',
+                                  subtitle: 'How your information is handled',
+                                  onTap: () => _showPendingPage(
+                                    context,
+                                    'Privacy policy',
+                                  ),
+                                ),
+                                _SettingsTile(
+                                  key: const ValueKey('settings-terms-option'),
+                                  icon: Icons.description_outlined,
+                                  title: 'Terms of service',
+                                  subtitle: 'Rules for using PropertyApp',
+                                  onTap: () => _showPendingPage(
+                                    context,
+                                    'Terms of service',
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 19.h),
+                            const _SettingsSectionLabel(
+                              eyebrow: 'SESSION & DATA',
+                              title: 'Account controls',
+                            ),
+                            SizedBox(height: 8.h),
+                            _SettingsGroup(
+                              children: [
+                                _SettingsTile(
+                                  key: const ValueKey(
+                                    'settings-sign-out-option',
+                                  ),
+                                  icon: Icons.logout_rounded,
+                                  title: provider.isSigningOut
+                                      ? 'Signing out…'
+                                      : 'Sign out',
+                                  subtitle: 'End this session on this device',
+                                  isLoading: provider.isSigningOut,
+                                  onTap: provider.isSigningOut
+                                      ? null
+                                      : () => _confirmSignOut(context),
+                                ),
+                                _SettingsTile(
+                                  key: const ValueKey(
+                                    'settings-delete-account-option',
+                                  ),
+                                  icon: Icons.delete_forever_outlined,
+                                  title: 'Delete account',
+                                  subtitle: 'Permanently remove account data',
+                                  destructive: true,
+                                  onTap: () => _confirmDeleteAccount(context),
+                                ),
+                              ],
+                            ),
+                            if (provider.errorMessage case final error?) ...[
+                              SizedBox(height: 8.h),
+                              Text(
+                                error,
+                                textAlign: TextAlign.center,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: colors.error,
+                                ),
+                              ),
+                            ],
+                            SizedBox(height: 17.h),
                             Text(
-                              'PROPERTY  /  PERSONAL SPACE',
+                              'PROPERTYAPP  /  ACCOUNT CONTROL',
                               textAlign: TextAlign.center,
                               style: theme.textTheme.labelSmall?.copyWith(
                                 color: colors.onSurfaceVariant.withValues(
-                                  alpha: 0.64,
+                                  alpha: 0.62,
                                 ),
+                                fontSize: 9.sp,
                                 fontWeight: FontWeight.w700,
-                                letterSpacing: 1.35,
+                                letterSpacing: 1.15,
                               ),
                             ),
                           ],
@@ -89,713 +239,25 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  String _nameFromEmail(String email) {
-    if (email.isEmpty) return 'Your account';
-    final localPart = email.split('@').first.trim();
-    return localPart.isEmpty ? 'Your account' : localPart;
-  }
-}
-
-class _AmbientBackground extends StatelessWidget {
-  const _AmbientBackground({
-    required this.primary,
-    required this.secondary,
-    required this.tertiary,
-  });
-
-  final Color primary;
-  final Color secondary;
-  final Color tertiary;
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: IgnorePointer(
-        child: Stack(
-          children: [
-            _Halo(color: primary, size: 270.r, top: -145.h, right: -118.w),
-            _Halo(color: secondary, size: 190.r, top: 248.h, left: -118.w),
-            _Halo(color: tertiary, size: 160.r, bottom: 42.h, right: -108.w),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Halo extends StatelessWidget {
-  const _Halo({
-    required this.color,
-    required this.size,
-    this.top,
-    this.right,
-    this.bottom,
-    this.left,
-  });
-
-  final Color color;
-  final double size;
-  final double? top;
-  final double? right;
-  final double? bottom;
-  final double? left;
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      top: top,
-      right: right,
-      bottom: bottom,
-      left: left,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.065),
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.17),
-              blurRadius: 82.r,
-              spreadRadius: 18.r,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ScreenTitle extends StatelessWidget {
-  const _ScreenTitle();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'PERSONAL CONTROL',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: colors.primary,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.45,
-                ),
-              ),
-              SizedBox(height: 5.h),
-              Text(
-                'Settings with\na point of view.',
-                style: theme.textTheme.displaySmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  height: 1.04,
-                  letterSpacing: -0.55,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Container(
-          width: 47.r,
-          height: 47.r,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: colors.surfaceContainerLow.withValues(alpha: 0.74),
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(18.r),
-              topRight: Radius.circular(7.r),
-              bottomLeft: Radius.circular(7.r),
-              bottomRight: Radius.circular(18.r),
-            ),
-            border: Border.all(
-              color: colors.outlineVariant.withValues(alpha: 0.58),
-            ),
-          ),
-          child: Text(
-            'P/',
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: colors.primary,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -1,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _AccountHero extends StatelessWidget {
-  const _AccountHero({required this.name, required this.email});
-
-  final String name;
-  final String email;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    final accent = Color.lerp(colors.secondary, colors.tertiary, 0.34)!;
-
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      padding: EdgeInsets.all(20.r),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [colors.primary, Color.lerp(colors.primary, accent, 0.56)!],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(30.r),
-          topRight: Radius.circular(12.r),
-          bottomLeft: Radius.circular(12.r),
-          bottomRight: Radius.circular(30.r),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: colors.primary.withValues(alpha: 0.28),
-            blurRadius: 26.r,
-            offset: Offset(0, 13.h),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            top: -100.r,
-            right: -74.r,
-            child: _HeroOrbit(color: colors.onPrimary.withValues(alpha: 0.13)),
-          ),
-          Positioned(
-            bottom: -111.r,
-            right: 32.r,
-            child: _HeroOrbit(
-              color: colors.onPrimary.withValues(alpha: 0.11),
-              size: 168.r,
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'SIGNED IN',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: colors.onPrimary.withValues(alpha: 0.8),
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.25,
-                    ),
-                  ),
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 9.w,
-                      vertical: 5.h,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colors.onPrimary.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(99.r),
-                      border: Border.all(
-                        color: colors.onPrimary.withValues(alpha: 0.18),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 6.r,
-                          height: 6.r,
-                          decoration: BoxDecoration(
-                            color: colors.secondary,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: colors.secondary.withValues(alpha: 0.8),
-                                blurRadius: 8.r,
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(width: 6.w),
-                        Text(
-                          'ACTIVE',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: colors.onPrimary,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 9.sp,
-                            letterSpacing: 0.8,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 23.h),
-              Row(
-                children: [
-                  _Monogram(name: name),
-                  SizedBox(width: 15.w),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            color: colors.onPrimary,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.2,
-                          ),
-                        ),
-                        SizedBox(height: 4.h),
-                        Text(
-                          email.isEmpty ? 'Your private space' : email,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colors.onPrimary.withValues(alpha: 0.76),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 22.h),
-              Container(
-                height: 1,
-                color: colors.onPrimary.withValues(alpha: 0.16),
-              ),
-              SizedBox(height: 12.h),
-              Text(
-                'YOUR SPACE, YOUR SIGNAL.',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: colors.onPrimary.withValues(alpha: 0.76),
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.15,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroOrbit extends StatelessWidget {
-  const _HeroOrbit({required this.color, this.size = 196});
-
-  final Color color;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: color, width: 24.r),
-      ),
-    );
-  }
-}
-
-class _Monogram extends StatelessWidget {
-  const _Monogram({required this.name});
-
-  final String name;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-
-    return Container(
-      width: 61.r,
-      height: 61.r,
-      padding: EdgeInsets.all(3.r),
-      decoration: BoxDecoration(
-        color: colors.onPrimary.withValues(alpha: 0.18),
-        shape: BoxShape.circle,
-        border: Border.all(color: colors.onPrimary.withValues(alpha: 0.3)),
-      ),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: colors.onPrimary.withValues(alpha: 0.14),
-          shape: BoxShape.circle,
-        ),
-        child: Center(
-          child: Text(
-            _initials(name),
-            style: theme.textTheme.titleLarge?.copyWith(
-              color: colors.onPrimary,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ),
-      ),
-    );
+  Future<void> _openAccountSection(
+    BuildContext context,
+    String route,
+    SettingsProvider provider,
+  ) async {
+    final result = await Navigator.of(
+      context,
+    ).pushNamed(route, arguments: provider.profile);
+    if (result is ProfileModel && context.mounted) {
+      provider.applyProfile(result);
+    }
   }
 
-  String _initials(String value) {
-    final parts = value
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((part) => part.isNotEmpty)
-        .toList(growable: false);
-    if (parts.isEmpty) return 'P';
-
-    final first = String.fromCharCode(parts.first.runes.first);
-    if (parts.length == 1) return first.toUpperCase();
-    final last = String.fromCharCode(parts.last.runes.first);
-    return '$first$last'.toUpperCase();
-  }
-}
-
-class _SectionLead extends StatelessWidget {
-  const _SectionLead({
-    required this.eyebrow,
-    required this.title,
-    required this.description,
-  });
-
-  final String eyebrow;
-  final String title;
-  final String description;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          eyebrow,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: colors.secondary,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.35,
-          ),
-        ),
-        SizedBox(height: 4.h),
-        Text(
-          title,
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.25,
-          ),
-        ),
-        SizedBox(height: 3.h),
-        Text(
-          description,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: colors.onSurfaceVariant,
-            height: 1.45,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _AppearanceStudio extends StatelessWidget {
-  const _AppearanceStudio();
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final themeProvider = context.watch<ThemeProvider>();
-
-    return Container(
-      padding: EdgeInsets.all(10.r),
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerLow.withValues(alpha: 0.82),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(22.r),
-          topRight: Radius.circular(9.r),
-          bottomLeft: Radius.circular(9.r),
-          bottomRight: Radius.circular(22.r),
-        ),
-        border: Border.all(
-          color: colors.outlineVariant.withValues(alpha: 0.58),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: colors.shadow.withValues(alpha: 0.045),
-            blurRadius: 18.r,
-            offset: Offset(0, 8.h),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _AppearanceOption(
-              label: 'System',
-              icon: Icons.settings_suggest_rounded,
-              mode: ThemeMode.system,
-              selected: themeProvider.themeMode == ThemeMode.system,
-              preview: [colors.primary, colors.secondary],
-            ),
-          ),
-          SizedBox(width: 8.w),
-          Expanded(
-            child: _AppearanceOption(
-              label: 'Light',
-              icon: Icons.wb_sunny_outlined,
-              mode: ThemeMode.light,
-              selected: themeProvider.themeMode == ThemeMode.light,
-              preview: [colors.surfaceBright, colors.primaryContainer],
-            ),
-          ),
-          SizedBox(width: 8.w),
-          Expanded(
-            child: _AppearanceOption(
-              label: 'Night',
-              icon: Icons.nights_stay_outlined,
-              mode: ThemeMode.dark,
-              selected: themeProvider.themeMode == ThemeMode.dark,
-              preview: [colors.inverseSurface, colors.primary],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AppearanceOption extends StatelessWidget {
-  const _AppearanceOption({
-    required this.label,
-    required this.icon,
-    required this.mode,
-    required this.selected,
-    required this.preview,
-  });
-
-  final String label;
-  final IconData icon;
-  final ThemeMode mode;
-  final bool selected;
-  final List<Color> preview;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: '$label appearance',
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => context.read<ThemeProvider>().setThemeMode(mode),
-          borderRadius: BorderRadius.circular(14.r),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 240),
-            curve: Curves.easeOutCubic,
-            padding: EdgeInsets.all(7.r),
-            decoration: BoxDecoration(
-              color: selected
-                  ? colors.primary.withValues(alpha: 0.11)
-                  : colors.surfaceContainerLowest.withValues(alpha: 0.56),
-              borderRadius: BorderRadius.circular(14.r),
-              border: Border.all(
-                color: selected
-                    ? colors.primary.withValues(alpha: 0.8)
-                    : colors.outlineVariant.withValues(alpha: 0.45),
-                width: selected ? 1.35 : 1,
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  height: 44.h,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: preview,
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(9.r),
-                  ),
-                  child: Stack(
-                    children: [
-                      Center(
-                        child: Icon(
-                          icon,
-                          color: mode == ThemeMode.light
-                              ? colors.onPrimaryContainer
-                              : colors.onPrimary,
-                          size: 18.r,
-                        ),
-                      ),
-                      if (selected)
-                        Positioned(
-                          top: 5.r,
-                          right: 5.r,
-                          child: Container(
-                            width: 14.r,
-                            height: 14.r,
-                            decoration: BoxDecoration(
-                              color: colors.onPrimary,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.check_rounded,
-                              color: colors.primary,
-                              size: 10.r,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: 7.h),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: selected ? colors.primary : colors.onSurfaceVariant,
-                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SignOutAction extends StatelessWidget {
-  const _SignOutAction();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    final provider = context.watch<SettingsProvider>();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Material(
-          color: colors.errorContainer.withValues(alpha: 0.38),
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(17.r),
-            topRight: Radius.circular(7.r),
-            bottomLeft: Radius.circular(7.r),
-            bottomRight: Radius.circular(17.r),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: provider.isSigningOut
-                ? null
-                : () => _confirmSignOut(context),
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 15.h),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40.r,
-                    height: 40.r,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: colors.error.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(13.r),
-                      border: Border.all(
-                        color: colors.error.withValues(alpha: 0.18),
-                      ),
-                    ),
-                    child: provider.isSigningOut
-                        ? SizedBox(
-                            width: 18.r,
-                            height: 18.r,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: colors.error,
-                            ),
-                          )
-                        : Icon(
-                            Icons.logout_rounded,
-                            color: colors.error,
-                            size: 20.r,
-                          ),
-                  ),
-                  SizedBox(width: 12.w),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          provider.isSigningOut ? 'Signing out…' : 'Sign out',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: colors.onErrorContainer,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        SizedBox(height: 2.h),
-                        Text(
-                          'Close this session on this device',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colors.onErrorContainer.withValues(
-                              alpha: 0.72,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    Icons.arrow_outward_rounded,
-                    color: colors.error,
-                    size: 19.r,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        if (provider.errorMessage case final error?) ...[
-          SizedBox(height: 8.h),
-          Semantics(
-            liveRegion: true,
-            child: Text(
-              error,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall?.copyWith(color: colors.error),
-            ),
-          ),
-        ],
-      ],
-    );
+  void _showPendingPage(BuildContext context, String page) {
+    MyDialog().showComingSoonDialog(context: context, featureName: page);
   }
 
   Future<void> _confirmSignOut(BuildContext context) async {
-    final shouldSignOut = await showDialog<bool>(
+    final approved = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         icon: const Icon(Icons.logout_rounded),
@@ -813,9 +275,560 @@ class _SignOutAction extends StatelessWidget {
         ],
       ),
     );
-
-    if (shouldSignOut == true && context.mounted) {
+    if (approved == true && context.mounted) {
       await context.read<SettingsProvider>().signOut();
     }
   }
+
+  Future<void> _confirmDeleteAccount(BuildContext context) async {
+    final approved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: Icon(
+          Icons.warning_amber_rounded,
+          color: Theme.of(dialogContext).colorScheme.error,
+        ),
+        title: const Text('Delete account?'),
+        content: const Text(
+          'This will permanently remove your account and property data once the deletion API is connected.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+    if (approved == true && context.mounted) {
+      MyDialog().showInfoToast(
+        title: 'API pending',
+        msg: 'Account deletion will be enabled when its API is available.',
+        context: context,
+      );
+    }
+  }
+}
+
+class _CompactSettingsHeader extends StatelessWidget {
+  const _CompactSettingsHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'CONTROL CENTER',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: colors.secondary,
+                  fontSize: 9.sp,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.35,
+                ),
+              ),
+              SizedBox(height: 2.h),
+              Text(
+                'Settings',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.6,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          width: 40.r,
+          height: 40.r,
+          decoration: BoxDecoration(
+            color: colors.primary.withValues(alpha: 0.11),
+            borderRadius: BorderRadius.circular(14.r),
+          ),
+          child: Icon(
+            Icons.settings_rounded,
+            color: colors.primary,
+            size: 20.r,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactAccountHero extends StatelessWidget {
+  const _CompactAccountHero({
+    required this.name,
+    required this.email,
+    required this.avatarUrl,
+  });
+
+  final String name;
+  final String email;
+  final String avatarUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return Container(
+      key: const ValueKey('settings-account-hero'),
+      padding: EdgeInsets.all(14.r),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            colors.primary,
+            Color.lerp(colors.primary, colors.secondary, 0.52)!,
+          ],
+        ),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(24.r),
+          topRight: Radius.circular(11.r),
+          bottomLeft: Radius.circular(11.r),
+          bottomRight: Radius.circular(24.r),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: colors.primary.withValues(alpha: 0.22),
+            blurRadius: 20.r,
+            offset: Offset(0, 8.h),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          _HeroAvatar(name: name, avatarUrl: avatarUrl),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: colors.onPrimary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                SizedBox(height: 2.h),
+                Text(
+                  email.isEmpty ? 'Your private workspace' : email,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colors.onPrimary.withValues(alpha: 0.78),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(
+            Icons.verified_user_outlined,
+            color: colors.onPrimary,
+            size: 20.r,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroAvatar extends StatelessWidget {
+  const _HeroAvatar({required this.name, required this.avatarUrl});
+
+  final String name;
+  final String avatarUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final fallback = Container(
+      color: colors.onPrimary.withValues(alpha: 0.16),
+      alignment: Alignment.center,
+      child: Text(
+        _initials(name),
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          color: colors.onPrimary,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+    return ClipOval(
+      child: Container(
+        width: 48.r,
+        height: 48.r,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: colors.onPrimary.withValues(alpha: 0.3),
+            width: 2,
+          ),
+        ),
+        child: avatarUrl.trim().isEmpty
+            ? fallback
+            : Image.network(
+                avatarUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => fallback,
+              ),
+      ),
+    );
+  }
+}
+
+class _SettingsSectionLabel extends StatelessWidget {
+  const _SettingsSectionLabel({required this.eyebrow, required this.title});
+
+  final String eyebrow;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                eyebrow,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: colors.secondary,
+                  fontSize: 9.sp,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.15,
+                ),
+              ),
+              Text(
+                title,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SettingsGroup extends StatelessWidget {
+  const _SettingsGroup({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLow.withValues(alpha: 0.88),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(
+          color: colors.outlineVariant.withValues(alpha: 0.52),
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (var index = 0; index < children.length; index++) ...[
+            children[index],
+            if (index != children.length - 1)
+              Divider(
+                height: 1,
+                indent: 58.w,
+                color: colors.outlineVariant.withValues(alpha: 0.48),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SettingsTile extends StatelessWidget {
+  const _SettingsTile({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.destructive = false,
+    this.isLoading = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback? onTap;
+  final bool destructive;
+  final bool isLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final accent = destructive ? colors.error : colors.primary;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 11.w, vertical: 10.h),
+          child: Row(
+            children: [
+              Container(
+                width: 36.r,
+                height: 36.r,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.09),
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                child: isLoading
+                    ? Padding(
+                        padding: EdgeInsets.all(9.r),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: accent,
+                        ),
+                      )
+                    : Icon(icon, size: 18.r, color: accent),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: destructive ? colors.error : colors.onSurface,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    SizedBox(height: 1.h),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                        fontSize: 10.sp,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 19.r,
+                color: destructive
+                    ? colors.error.withValues(alpha: 0.75)
+                    : colors.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CompactThemePicker extends StatelessWidget {
+  const _CompactThemePicker();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final provider = context.watch<ThemeProvider>();
+    return Container(
+      padding: EdgeInsets.all(6.r),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLow.withValues(alpha: 0.88),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(
+          color: colors.outlineVariant.withValues(alpha: 0.52),
+        ),
+      ),
+      child: Row(
+        children: [
+          _ThemeChoice(
+            label: 'System',
+            icon: Icons.settings_suggest_outlined,
+            mode: ThemeMode.system,
+            selected: provider.themeMode == ThemeMode.system,
+          ),
+          _ThemeChoice(
+            label: 'Light',
+            icon: Icons.light_mode_outlined,
+            mode: ThemeMode.light,
+            selected: provider.themeMode == ThemeMode.light,
+          ),
+          _ThemeChoice(
+            label: 'Dark',
+            icon: Icons.dark_mode_outlined,
+            mode: ThemeMode.dark,
+            selected: provider.themeMode == ThemeMode.dark,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ThemeChoice extends StatelessWidget {
+  const _ThemeChoice({
+    required this.label,
+    required this.icon,
+    required this.mode,
+    required this.selected,
+  });
+
+  final String label;
+  final IconData icon;
+  final ThemeMode mode;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: ValueKey('settings-theme-${mode.name}'),
+          onTap: () => context.read<ThemeProvider>().setThemeMode(mode),
+          borderRadius: BorderRadius.circular(11.r),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: EdgeInsets.symmetric(vertical: 9.h, horizontal: 4.w),
+            decoration: BoxDecoration(
+              color: selected
+                  ? colors.primary.withValues(alpha: 0.12)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(11.r),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: 16.r,
+                  color: selected ? colors.primary : colors.onSurfaceVariant,
+                ),
+                SizedBox(width: 5.w),
+                Text(
+                  label,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: selected ? colors.primary : colors.onSurfaceVariant,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsAmbientBackground extends StatelessWidget {
+  const _SettingsAmbientBackground();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: Stack(
+          children: [
+            _SettingsGlow(
+              color: colors.primary,
+              size: 250.r,
+              top: -150.h,
+              right: -130.w,
+            ),
+            _SettingsGlow(
+              color: colors.secondary,
+              size: 190.r,
+              top: 470.h,
+              left: -132.w,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsGlow extends StatelessWidget {
+  const _SettingsGlow({
+    required this.color,
+    required this.size,
+    this.top,
+    this.right,
+    this.left,
+  });
+
+  final Color color;
+  final double size;
+  final double? top;
+  final double? right;
+  final double? left;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: top,
+      right: right,
+      left: left,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.035),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.12),
+              blurRadius: 85.r,
+              spreadRadius: 20.r,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _nameFromEmail(String email) {
+  final local = email.split('@').first.trim();
+  return local.isEmpty ? 'Your account' : local;
+}
+
+String _initials(String value) {
+  final parts = value
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((part) => part.isNotEmpty)
+      .take(2);
+  final initials = parts.map((part) => part[0].toUpperCase()).join();
+  return initials.isEmpty ? 'P' : initials;
 }

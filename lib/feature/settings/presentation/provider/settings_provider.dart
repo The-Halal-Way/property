@@ -1,13 +1,21 @@
 import 'package:flutter/foundation.dart';
 import 'package:property/feature/auth/data/auth_repository.dart';
+import 'package:property/feature/settings/data/model/profile_model.dart';
 
 class SettingsProvider extends ChangeNotifier {
-  SettingsProvider(this._authRepository);
+  SettingsProvider(AuthRepository authRepository)
+    : _signOut = authRepository.signOut;
 
-  final AuthRepository _authRepository;
+  SettingsProvider.withSignOut(Future<void> Function() signOut)
+    : _signOut = signOut;
+
+  final Future<void> Function() _signOut;
 
   bool _isSigningOut = false;
   bool get isSigningOut => _isSigningOut;
+
+  ProfileModel? _profile;
+  ProfileModel? get profile => _profile;
 
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
@@ -22,7 +30,7 @@ class SettingsProvider extends ChangeNotifier {
     _notifyListeners();
 
     try {
-      await _authRepository.signOut();
+      await _signOut();
     } catch (_) {
       _errorMessage = 'Could not sign out. Please try again.';
     } finally {
@@ -34,6 +42,11 @@ class SettingsProvider extends ChangeNotifier {
   void clearError() {
     if (_errorMessage == null) return;
     _errorMessage = null;
+    _notifyListeners();
+  }
+
+  void applyProfile(ProfileModel profile) {
+    _profile = profile;
     _notifyListeners();
   }
 

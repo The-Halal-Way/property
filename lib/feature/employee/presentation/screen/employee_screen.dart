@@ -97,9 +97,14 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
                       child: _CenteredEmployeeContent(
                         child: EmployeeHeader(
                           onBack: () => Navigator.of(context).maybePop(),
-                          onAdd: () => Navigator.of(
-                            context,
-                          ).pushNamed(AppRouteName.addEmployee),
+                          onAdd: () async {
+                            final created = await Navigator.of(
+                              context,
+                            ).pushNamed(AppRouteName.addEmployee);
+                            if (created != null && context.mounted) {
+                              await provider.refresh();
+                            }
+                          },
                         ),
                       ),
                     ),

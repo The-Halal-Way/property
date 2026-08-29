@@ -1,5 +1,7 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:property/core/model/selected_upload_file.dart';
 
 /// Describes a text field without tying the form layout to a fixed row.
 ///
@@ -17,6 +19,9 @@ class DynamicTextFieldDefinition {
     this.fullWidth = false,
     this.minLines = 1,
     this.maxLines = 1,
+    this.isRequired = false,
+    this.maxLength,
+    this.validator,
   });
 
   final String id;
@@ -29,6 +34,9 @@ class DynamicTextFieldDefinition {
   final bool fullWidth;
   final int minLines;
   final int maxLines;
+  final bool isRequired;
+  final int? maxLength;
+  final FormFieldValidator<String>? validator;
 }
 
 class DynamicTextFieldGrid extends StatelessWidget {
@@ -70,6 +78,21 @@ class DynamicTextFieldGrid extends StatelessWidget {
                 textInputAction: field.maxLines > 1
                     ? TextInputAction.newline
                     : TextInputAction.next,
+                validator: (value) {
+                  final trimmed = value?.trim() ?? '';
+                  final fieldName = field.label
+                      .replaceAll('(optional)', '')
+                      .replaceAll('*', '')
+                      .trim();
+                  if (field.isRequired && trimmed.isEmpty) {
+                    return '$fieldName is required.';
+                  }
+                  final maxLength = field.maxLength;
+                  if (maxLength != null && trimmed.length > maxLength) {
+                    return '$fieldName must be $maxLength characters or less.';
+                  }
+                  return field.validator?.call(value);
+                },
                 decoration: InputDecoration(
                   labelText: field.label,
                   hintText: field.hint,
@@ -182,6 +205,8 @@ class EntityFormScaffold extends StatelessWidget {
     required this.submitLabel,
     required this.onSubmit,
     required this.children,
+    this.formKey,
+    this.isSubmitting = false,
   });
 
   final String pageId;
@@ -192,6 +217,8 @@ class EntityFormScaffold extends StatelessWidget {
   final String submitLabel;
   final VoidCallback onSubmit;
   final List<Widget> children;
+  final GlobalKey<FormState>? formKey;
+  final bool isSubmitting;
 
   @override
   Widget build(BuildContext context) {
@@ -223,47 +250,59 @@ class EntityFormScaffold extends StatelessWidget {
                     child: Center(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 760),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _EntityFormHeader(
-                              eyebrow: eyebrow,
-                              title: title,
-                              icon: icon,
-                              onBack: () => Navigator.of(context).maybePop(),
-                            ),
-                            SizedBox(height: 20.h),
-                            _EntityFormIntro(
-                              description: description,
-                              icon: icon,
-                            ),
-                            SizedBox(height: 16.h),
-                            for (
-                              var index = 0;
-                              index < children.length;
-                              index++
-                            ) ...[
-                              children[index],
-                              if (index != children.length - 1)
-                                SizedBox(height: 13.h),
-                            ],
-                            SizedBox(height: 20.h),
-                            FilledButton.icon(
-                              key: ValueKey('$pageId-submit-button'),
-                              onPressed: onSubmit,
-                              icon: const Icon(Icons.arrow_forward_rounded),
-                              label: Text(submitLabel),
-                              style: FilledButton.styleFrom(
-                                padding: EdgeInsets.symmetric(vertical: 16.h),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15.r),
+                        child: Form(
+                          key: formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _EntityFormHeader(
+                                eyebrow: eyebrow,
+                                title: title,
+                                icon: icon,
+                                onBack: () => Navigator.of(context).maybePop(),
+                              ),
+                              SizedBox(height: 20.h),
+                              _EntityFormIntro(
+                                description: description,
+                                icon: icon,
+                              ),
+                              SizedBox(height: 16.h),
+                              for (
+                                var index = 0;
+                                index < children.length;
+                                index++
+                              ) ...[
+                                children[index],
+                                if (index != children.length - 1)
+                                  SizedBox(height: 13.h),
+                              ],
+                              SizedBox(height: 20.h),
+                              FilledButton.icon(
+                                key: ValueKey('$pageId-submit-button'),
+                                onPressed: isSubmitting ? null : onSubmit,
+                                icon: isSubmitting
+                                    ? SizedBox.square(
+                                        dimension: 18.r,
+                                        child: const CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Icon(Icons.arrow_forward_rounded),
+                                label: Text(
+                                  isSubmitting ? 'Saving…' : submitLabel,
+                                ),
+                                style: FilledButton.styleFrom(
+                                  padding: EdgeInsets.symmetric(vertical: 16.h),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(15.r),
+                                  ),
                                 ),
                               ),
-                            ),
-                            SizedBox(
-                              height: MediaQuery.paddingOf(context).bottom,
-                            ),
-                          ],
+                              SizedBox(
+                                height: MediaQuery.paddingOf(context).bottom,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -274,6 +313,172 @@ class EntityFormScaffold extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class EntityFilePickerField extends StatefulWidget {
+  const EntityFilePickerField({
+    super.key,
+    required this.id,
+    required this.label,
+    required this.icon,
+    required this.selectedFile,
+    required this.onChanged,
+    this.imagesOnly = false,
+    this.allowedExtensions,
+    this.maxSizeInBytes = 5 * 1024 * 1024,
+  });
+
+  final String id;
+  final String label;
+  final IconData icon;
+  final SelectedUploadFile? selectedFile;
+  final ValueChanged<SelectedUploadFile?> onChanged;
+  final bool imagesOnly;
+  final List<String>? allowedExtensions;
+  final int maxSizeInBytes;
+
+  @override
+  State<EntityFilePickerField> createState() => _EntityFilePickerFieldState();
+}
+
+class _EntityFilePickerFieldState extends State<EntityFilePickerField> {
+  bool _isPicking = false;
+  String? _errorText;
+
+  Future<void> _pickFile() async {
+    if (_isPicking) return;
+    setState(() {
+      _isPicking = true;
+      _errorText = null;
+    });
+
+    try {
+      final extensions = widget.allowedExtensions;
+      final result = await FilePicker.pickFiles(
+        allowMultiple: false,
+        withData: true,
+        type: widget.imagesOnly
+            ? FileType.image
+            : extensions == null
+            ? FileType.any
+            : FileType.custom,
+        allowedExtensions: widget.imagesOnly ? null : extensions,
+      );
+      if (result == null || result.files.isEmpty) return;
+
+      final picked = result.files.single;
+      final bytes = picked.bytes;
+      if (bytes == null) {
+        setState(() => _errorText = 'The selected file could not be read.');
+        return;
+      }
+      if (bytes.lengthInBytes > widget.maxSizeInBytes) {
+        final maxMegabytes = widget.maxSizeInBytes / (1024 * 1024);
+        setState(
+          () => _errorText =
+              'Choose a file no larger than ${maxMegabytes.toStringAsFixed(0)} MB.',
+        );
+        return;
+      }
+
+      widget.onChanged(SelectedUploadFile(name: picked.name, bytes: bytes));
+    } catch (_) {
+      if (mounted) {
+        setState(() => _errorText = 'The file picker could not be opened.');
+      }
+    } finally {
+      if (mounted) setState(() => _isPicking = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final selectedFile = widget.selectedFile;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Material(
+          color: colors.surfaceContainerHighest.withValues(alpha: 0.28),
+          borderRadius: BorderRadius.circular(14.r),
+          child: InkWell(
+            key: ValueKey('file-picker-${widget.id}'),
+            onTap: _isPicking ? null : _pickFile,
+            borderRadius: BorderRadius.circular(14.r),
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(horizontal: 13.w, vertical: 12.h),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14.r),
+                border: Border.all(
+                  color: _errorText == null
+                      ? colors.outlineVariant.withValues(alpha: 0.55)
+                      : colors.error,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(widget.icon, color: colors.primary, size: 21.r),
+                  SizedBox(width: 11.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.label,
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        SizedBox(height: 2.h),
+                        Text(
+                          selectedFile?.name ??
+                              'Tap to choose a file (max 5 MB)',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: selectedFile == null
+                                ? colors.onSurfaceVariant
+                                : colors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_isPicking)
+                    SizedBox.square(
+                      dimension: 18.r,
+                      child: const CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  else if (selectedFile != null)
+                    IconButton(
+                      key: ValueKey('file-picker-${widget.id}-clear'),
+                      tooltip: 'Remove file',
+                      onPressed: () => widget.onChanged(null),
+                      icon: const Icon(Icons.close_rounded),
+                    )
+                  else
+                    const Icon(Icons.upload_rounded),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (_errorText case final error?) ...[
+          SizedBox(height: 5.h),
+          Padding(
+            padding: EdgeInsets.only(left: 12.w),
+            child: Text(
+              error,
+              style: theme.textTheme.bodySmall?.copyWith(color: colors.error),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

@@ -12,6 +12,8 @@ import 'package:property/feature/invoice/presentation/screen/invoice_screen.dart
 import 'package:property/feature/properties/presentation/screen/add_property_screen.dart';
 import 'package:property/feature/properties/presentation/screen/properties_screen.dart';
 import 'package:property/feature/report/presentation/screen/report_screen.dart';
+import 'package:property/feature/settings/data/model/profile_model.dart';
+import 'package:property/feature/settings/presentation/screen/account_settings_screen.dart';
 import 'package:property/feature/tenant/presentation/screen/add_tenant_screen.dart';
 import 'package:property/feature/tenant/presentation/screen/tenant_screen.dart';
 
@@ -21,6 +23,8 @@ class AppRouteName {
   static const String signUp = '/auth/sign-up';
   static const String settings = '/settings';
   static const String profileDetails = '/settings/profile-details';
+  static const String preferences = '/settings/preferences';
+  static const String password = '/settings/password';
   static const String home = '/home';
   static const String employees = '/employees';
   static const String addEmployee = '/employees/add';
@@ -57,6 +61,39 @@ abstract class AppRouter {
           child: ChangeNotifierProvider(
             create: (context) => SignUpProvider(context.read<AuthRepository>()),
             child: const SignUpScreen(),
+          ),
+        );
+
+      case AppRouteName.profileDetails:
+        return _materialRoute(
+          settings: settings,
+          child: AccountSettingsRoutePage(
+            initialSection: AccountSettingsSection.profile,
+            initialProfile: settings.arguments is ProfileModel
+                ? settings.arguments! as ProfileModel
+                : null,
+          ),
+        );
+
+      case AppRouteName.preferences:
+        return _materialRoute(
+          settings: settings,
+          child: AccountSettingsRoutePage(
+            initialSection: AccountSettingsSection.preferences,
+            initialProfile: settings.arguments is ProfileModel
+                ? settings.arguments! as ProfileModel
+                : null,
+          ),
+        );
+
+      case AppRouteName.password:
+        return _materialRoute(
+          settings: settings,
+          child: AccountSettingsRoutePage(
+            initialSection: AccountSettingsSection.password,
+            initialProfile: settings.arguments is ProfileModel
+                ? settings.arguments! as ProfileModel
+                : null,
           ),
         );
 

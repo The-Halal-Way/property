@@ -1,5 +1,5 @@
 class MyApiUrl {
-  static const String baseUrl = "https://op-media-backend.up.railway.app";
+  static const String baseUrl = "https://property.ittadipharma.com/api";
   static const String version = "v1";
   static const String googleAuth = "auth/google";
 

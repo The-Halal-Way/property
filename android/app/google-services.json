@@ -12,7 +12,20 @@
           "package_name": "com.thehalalway.property"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1004868151524-r16tu2o86qddd3rt2bdedrdpvgrvcmr3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.thehalalway.property",
+            "certificate_hash": "a8134c7f3c361ed8f4f8f3238d7b10a9b6d6f039"
+          }
+        },
+        {
+          "client_id": "1004868151524-kgjf4gjvnl53e7on1lou2b3gonfu1cb6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAIAGg3IH9M1t3wDkvzgVuPmcRf7s3UGdk"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1004868151524-kgjf4gjvnl53e7on1lou2b3gonfu1cb6.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

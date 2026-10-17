@@ -1,12 +1,28 @@
-/// App-wide mutable state that isn't tied to a single feature.
-///
-/// Holds the current Firebase ID token so [BaseClient] can attach it to
-/// authorized API requests without every call site needing a direct
-/// dependency on Firebase Auth. Kept in sync by [AuthRepository].
+import 'package:property/core/model/google_auth_response.dart';
+
+/// App-wide authentication state returned by the backend.
 class GlobalService {
   GlobalService._();
 
   static final GlobalService instance = GlobalService._();
 
-  String? idToken;
+  GoogleAuthResponse? googleAuthResponse;
+
+  /// Backend bearer token used by every authorized API request.
+  String? token;
+
+  /// Compatibility alias for older call sites that used the Firebase name.
+  String? get idToken => token;
+
+  set idToken(String? value) => token = value;
+
+  void saveGoogleAuthResponse(GoogleAuthResponse response) {
+    googleAuthResponse = response;
+    token = response.data.token;
+  }
+
+  void clearAuth() {
+    googleAuthResponse = null;
+    token = null;
+  }
 }

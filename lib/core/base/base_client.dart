@@ -16,9 +16,9 @@ class BaseClient {
   static Map<String, String> get header => {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    if (GlobalService.instance.idToken != null &&
-        GlobalService.instance.idToken!.isNotEmpty)
-      'Authorization': 'Bearer ${GlobalService.instance.idToken}',
+    if (GlobalService.instance.token != null &&
+        GlobalService.instance.token!.isNotEmpty)
+      'Authorization': 'Bearer ${GlobalService.instance.token}',
   };
 
   static Map<String, String> get _bodylessHeader =>
